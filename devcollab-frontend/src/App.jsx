@@ -1,34 +1,36 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import LoginPage         from "./pages/LoginPage";
-import RegisterPage      from "./pages/RegisterPage";
-import WorkspacePage     from "./pages/WorkspacePage";
-import ProjectPage       from "./pages/ProjectPage";
+import LandingPage      from "./pages/LandingPage";       // ← new
+import LoginPage        from "./pages/LoginPage";
+import RegisterPage     from "./pages/RegisterPage";
+import WorkspacePage    from "./pages/WorkspacePage";
+import ProjectPage      from "./pages/ProjectPage";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
-import AIPage            from "./pages/AIPage";
-import CodeReviewPage    from "./pages/CodeReviewPage";
+import AIPage           from "./pages/AIPage";
+import CodeReviewPage   from "./pages/CodeReviewPage";
 
-import ProtectedRoute    from "./routes/ProtectedRoute";
-import DashboardLayout   from "./layouts/DashboardLayout";
+import ProtectedRoute   from "./routes/ProtectedRoute";
+import DashboardLayout  from "./layouts/DashboardLayout";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public */}
+        {/* ── Public ── */}
+        <Route path="/"         element={<LandingPage />} />   {/* ← landing page */}
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Protected */}
+        {/* ── Protected (dashboard) ── */}
         <Route
-          path="/"
+          path="/app"
           element={
             <ProtectedRoute>
               <DashboardLayout />
             </ProtectedRoute>
           }
         >
-          {/* Workspaces list */}
+          {/* Workspaces list — was "/" before */}
           <Route index element={<WorkspacePage />} />
 
           {/* Projects + Activity inside a workspace */}
