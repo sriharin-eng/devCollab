@@ -19,10 +19,10 @@ function RegisterPage() {
     setLoading(true);
     try {
       const data = await registerUser(form);
-      setToken(data.token);
-      setUser(data.user);
-      toast("Account created!", "success");
-      navigate("/");
+      toast("OTP sent to your email!", "success");
+      navigate("/verify-email", {
+        state: { userId: data.userId, email: form.email },
+      });
     } catch (err) {
       toast(err.response?.data?.message || "Registration failed", "error");
     }
@@ -37,7 +37,6 @@ function RegisterPage() {
 
       <div className="w-full max-w-sm animate-fadein relative">
         <div className="flex flex-col items-center mb-8">
-
           <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center overflow-hidden shadow-lg shadow-indigo-500/20 mb-4">
             <img
               src="/logo.png"
@@ -60,12 +59,29 @@ function RegisterPage() {
           className="bg-[#0d1117] border border-[#1e2535] rounded-2xl p-6 flex flex-col gap-4"
         >
           {[
-            { name: "name", label: "Full Name", type: "text", placeholder: "John Doe" },
-            { name: "email", label: "Email", type: "email", placeholder: "you@company.com" },
-            { name: "password", label: "Password", type: "password", placeholder: "••••••••" },
+            {
+              name: "name",
+              label: "Full Name",
+              type: "text",
+              placeholder: "John Doe",
+            },
+            {
+              name: "email",
+              label: "Email",
+              type: "email",
+              placeholder: "you@company.com",
+            },
+            {
+              name: "password",
+              label: "Password",
+              type: "password",
+              placeholder: "••••••••",
+            },
           ].map((field) => (
             <div key={field.name} className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">{field.label}</label>
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                {field.label}
+              </label>
               <input
                 type={field.type}
                 name={field.name}
@@ -90,7 +106,10 @@ function RegisterPage() {
 
         <p className="text-center text-sm text-slate-500 mt-5">
           Already have an account?{" "}
-          <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium">
+          <Link
+            to="/login"
+            className="text-indigo-400 hover:text-indigo-300 font-medium"
+          >
             Sign in
           </Link>
         </p>

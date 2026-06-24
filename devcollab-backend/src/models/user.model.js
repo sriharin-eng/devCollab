@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
     },
-
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -17,44 +16,43 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       validate: [validator.isEmail, "Invalid email"],
     },
-
     password: {
       type: String,
-      required: [true, "Password is required"],
       minlength: 6,
       select: false,
+      // no longer required — Google users won't have one
     },
-
-    avatar: {
+    googleId: {
       type: String,
-      default: "",
+      default: null,
     },
-
-    bio: {
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otp: {
       type: String,
-      default: "",
+      select: false,
     },
-
-    skills: {
-      type: [String],
-      default: [],
+    otpExpiry: {
+      type: Date,
+      select: false,
     },
-
-    githubProfile: {
+    otpPurpose: {
       type: String,
-      default: "",
+      enum: ["verify_email", "reset_password"],
+      select: false,
     },
+    avatar: { type: String, default: "" },
+    bio: { type: String, default: "" },
+    skills: { type: [String], default: [] },
+    githubProfile: { type: String, default: "" },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) {
-    return;
-  }
-
+  if (!this.isModified("password") || !this.password) return;
   this.password = await bcrypt.hash(this.password, 10);
 });
 
@@ -63,5 +61,4 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 };
 
 const User = mongoose.model("User", userSchema);
-
 export default User;
