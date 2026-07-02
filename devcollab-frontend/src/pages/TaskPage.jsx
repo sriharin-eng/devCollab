@@ -8,23 +8,40 @@ import {
   deleteTask,
 } from "../services/task.service";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import Button from "../components/Button";
 import { StatusBadge, PriorityBadge } from "../components/Badge";
+import { canWrite, canManage } from "../utils/roles";
 
 // ── Exact values from your backend task.model.js ──────────────────
 const COLUMNS = [
-  { id: "To Do",      label: "To Do",      color: "text-slate-400",   dot: "bg-slate-500" },
-  { id: "In Progress",label: "In Progress",color: "text-blue-400",    dot: "bg-blue-500"  },
-  { id: "In Review",  label: "In Review",  color: "text-amber-400",   dot: "bg-amber-500" },
-  { id: "Done",       label: "Done",       color: "text-emerald-400", dot: "bg-emerald-500"},
+  { id: "To Do", label: "To Do", color: "text-slate-400", dot: "bg-slate-500" },
+  {
+    id: "In Progress",
+    label: "In Progress",
+    color: "text-blue-400",
+    dot: "bg-blue-500",
+  },
+  {
+    id: "In Review",
+    label: "In Review",
+    color: "text-amber-400",
+    dot: "bg-amber-500",
+  },
+  {
+    id: "Done",
+    label: "Done",
+    color: "text-emerald-400",
+    dot: "bg-emerald-500",
+  },
 ];
 
 // P0 = most urgent, P2 = lowest
 const PRIORITIES = [
   { value: "P0", label: "P0 — Critical" },
-  { value: "P1", label: "P1 — Medium"   },
-  { value: "P2", label: "P2 — Low"      },
+  { value: "P1", label: "P1 — Medium" },
+  { value: "P2", label: "P2 — Low" },
 ];
 
 const PRIORITY_STYLES = {
@@ -34,28 +51,35 @@ const PRIORITY_STYLES = {
 };
 
 const STATUS_STYLES = {
-  "To Do":       "bg-slate-700/60 text-slate-300 border-slate-600/40",
+  "To Do": "bg-slate-700/60 text-slate-300 border-slate-600/40",
   "In Progress": "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  "In Review":   "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  "Done":        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  "In Review": "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  Done: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
 };
 
-function TaskPage() {
+function TaskPage({ role = "Viewer" }) {
   const { workspaceId, projectId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
 
-  const [tasks,        setTasks]        = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [createModal,  setCreateModal]  = useState(false);
-  const [detailTask,   setDetailTask]   = useState(null);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [comment,      setComment]      = useState("");
-  const [addingComment,setAddingComment]= useState(false);
+  const canCreate = canWrite(role);
+  const canManageTasks = canManage(role);
+
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [createModal, setCreateModal] = useState(false);
+  const [detailTask, setDetailTask] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [comment, setComment] = useState("");
+  const [addingComment, setAddingComment] = useState(false);
 
   const [form, setForm] = useState({
-    title: "", description: "", priority: "P1",
-    dueDate: "", labels: "",
+    title: "",
+    description: "",
+    priority: "P1",
+    dueDate: "",
+    labels: "",
     // assignee is intentionally removed — needs real ObjectId
   });
 
@@ -70,7 +94,9 @@ function TaskPage() {
     }
   };
 
-  useEffect(() => { fetchTasks(); }, [projectId]);
+  useEffect(() => {
+    fetchTasks();
+  }, [projectId]);
 
   // Keep detailTask in sync when tasks list updates
   useEffect(() => {
@@ -86,12 +112,15 @@ function TaskPage() {
     setSubmitting(true);
     try {
       const body = {
-        title:       form.title,
+        title: form.title,
         description: form.description,
-        priority:    form.priority,
-        dueDate:     form.dueDate || undefined,
-        labels:      form.labels
-          ? form.labels.split(",").map((l) => l.trim()).filter(Boolean)
+        priority: form.priority,
+        dueDate: form.dueDate || undefined,
+        labels: form.labels
+          ? form.labels
+              .split(",")
+              .map((l) => l.trim())
+              .filter(Boolean)
           : [],
         projectId,
         // assignee intentionally omitted — needs a MongoDB ObjectId
@@ -99,7 +128,13 @@ function TaskPage() {
       await createTask(body);
       toast("Task created!", "success");
       setCreateModal(false);
-      setForm({ title: "", description: "", priority: "P1", dueDate: "", labels: "" });
+      setForm({
+        title: "",
+        description: "",
+        priority: "P1",
+        dueDate: "",
+        labels: "",
+      });
       fetchTasks();
     } catch (err) {
       toast(err.response?.data?.message || "Failed to create task", "error");
@@ -111,7 +146,7 @@ function TaskPage() {
     try {
       await updateTaskStatus(taskId, status);
       setTasks((prev) =>
-        prev.map((t) => t._id === taskId ? { ...t, status } : t)
+        prev.map((t) => (t._id === taskId ? { ...t, status } : t)),
       );
     } catch (err) {
       toast(err.response?.data?.message || "Failed to update status", "error");
@@ -139,7 +174,7 @@ function TaskPage() {
       // backend returns the full updated task
       const updatedTask = data.task;
       setTasks((prev) =>
-        prev.map((t) => t._id === updatedTask._id ? updatedTask : t)
+        prev.map((t) => (t._id === updatedTask._id ? updatedTask : t)),
       );
       setDetailTask(updatedTask);
       setComment("");
@@ -158,7 +193,10 @@ function TaskPage() {
         <div className="h-6 w-32 bg-[#1a2035] rounded-lg animate-pulse mb-8" />
         <div className="grid grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-48 bg-[#0d1117] border border-[#1e2535] rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="h-48 bg-[#0d1117] border border-[#1e2535] rounded-2xl animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -170,12 +208,16 @@ function TaskPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Tasks</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Tasks
+          </h1>
           <p className="text-slate-400 text-sm mt-1">
             {tasks.length} task{tasks.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={() => setCreateModal(true)}>+ New Task</Button>
+        {canCreate && (
+          <Button onClick={() => setCreateModal(true)}>+ New Task</Button>
+        )}
       </div>
 
       {/* Kanban board */}
@@ -187,7 +229,9 @@ function TaskPage() {
               {/* Column header */}
               <div className="flex items-center gap-2 px-1">
                 <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                <span className={`text-xs font-semibold uppercase tracking-wider ${col.color}`}>
+                <span
+                  className={`text-xs font-semibold uppercase tracking-wider ${col.color}`}
+                >
                   {col.label}
                 </span>
                 <span className="ml-auto text-xs text-slate-600 bg-[#1a2035] px-2 py-0.5 rounded-full">
@@ -207,7 +251,9 @@ function TaskPage() {
                       {task.title}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.P1}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.P1}`}
+                      >
                         {task.priority || "P1"}
                       </span>
                       {task.dueDate && (
@@ -259,7 +305,9 @@ function TaskPage() {
                 autoFocus
                 placeholder="Task title"
                 value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
                 required
                 className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
               />
@@ -273,7 +321,9 @@ function TaskPage() {
                 rows={3}
                 placeholder="Task details…"
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
                 className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all resize-none"
               />
             </div>
@@ -285,11 +335,15 @@ function TaskPage() {
                 </label>
                 <select
                   value={form.priority}
-                  onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, priority: e.target.value }))
+                  }
                   className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
                 >
                   {PRIORITIES.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -300,7 +354,9 @@ function TaskPage() {
                 <input
                   type="date"
                   value={form.dueDate}
-                  onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, dueDate: e.target.value }))
+                  }
                   className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all"
                 />
               </div>
@@ -313,16 +369,24 @@ function TaskPage() {
               <input
                 placeholder="bug, frontend, urgent"
                 value={form.labels}
-                onChange={(e) => setForm((f) => ({ ...f, labels: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, labels: e.target.value }))
+                }
                 className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
               />
             </div>
 
             <div className="flex gap-3 justify-end pt-1">
-              <Button variant="ghost" type="button" onClick={() => setCreateModal(false)}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setCreateModal(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" loading={submitting}>Create Task</Button>
+              <Button type="submit" loading={submitting}>
+                Create Task
+              </Button>
             </div>
           </form>
         </Modal>
@@ -330,14 +394,22 @@ function TaskPage() {
 
       {/* ── Task Detail Modal ─────────────────────────── */}
       {detailTask && (
-        <Modal title={detailTask.title} onClose={() => setDetailTask(null)} size="lg">
+        <Modal
+          title={detailTask.title}
+          onClose={() => setDetailTask(null)}
+          size="lg"
+        >
           <div className="flex flex-col gap-5">
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${STATUS_STYLES[detailTask.status] || STATUS_STYLES["To Do"]}`}>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${STATUS_STYLES[detailTask.status] || STATUS_STYLES["To Do"]}`}
+              >
                 {detailTask.status || "To Do"}
               </span>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${PRIORITY_STYLES[detailTask.priority] || PRIORITY_STYLES.P1}`}>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${PRIORITY_STYLES[detailTask.priority] || PRIORITY_STYLES.P1}`}
+              >
                 {detailTask.priority || "P1"}
               </span>
               {detailTask.dueDate && (
@@ -358,7 +430,10 @@ function TaskPage() {
             {detailTask.labels?.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {detailTask.labels.map((l, i) => (
-                  <span key={i} className="text-xs bg-[#1a2035] text-slate-400 px-2.5 py-1 rounded-lg border border-[#2a3550]">
+                  <span
+                    key={i}
+                    className="text-xs bg-[#1a2035] text-slate-400 px-2.5 py-1 rounded-lg border border-[#2a3550]"
+                  >
                     {l}
                   </span>
                 ))}
@@ -379,7 +454,9 @@ function TaskPage() {
             {detailTask.createdBy && (
               <p className="text-sm text-slate-500">
                 Created by:{" "}
-                <span className="text-slate-300">{detailTask.createdBy?.name}</span>
+                <span className="text-slate-300">
+                  {detailTask.createdBy?.name}
+                </span>
               </p>
             )}
 
@@ -390,24 +467,31 @@ function TaskPage() {
               </label>
               <select
                 value={detailTask.status || "To Do"}
-                onChange={(e) => handleStatusChange(detailTask._id, e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
+                onChange={(e) =>
+                  handleStatusChange(detailTask._id, e.target.value)
+                }
+                disabled={!canCreate}
+                className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {COLUMNS.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
                 ))}
               </select>
             </div>
 
             {/* Delete */}
-            <Button
-              variant="danger"
-              size="sm"
-              className="w-fit"
-              onClick={() => handleDelete(detailTask._id)}
-            >
-              Delete Task
-            </Button>
+            {(canManageTasks || detailTask.createdBy?._id === user?.id) && (
+              <Button
+                variant="danger"
+                size="sm"
+                className="w-fit"
+                onClick={() => handleDelete(detailTask._id)}
+              >
+                Delete Task
+              </Button>
+            )}
 
             {/* Comments */}
             <div className="border-t border-[#1e2535] pt-5">
@@ -435,17 +519,23 @@ function TaskPage() {
               </div>
 
               {/* Add comment */}
-              <form onSubmit={handleAddComment} className="flex gap-2">
-                <input
-                  placeholder="Write a comment…"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
-                />
-                <Button type="submit" size="sm" loading={addingComment}>
-                  Post
-                </Button>
-              </form>
+              {canCreate ? (
+                <form onSubmit={handleAddComment} className="flex gap-2">
+                  <input
+                    placeholder="Write a comment…"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
+                  />
+                  <Button type="submit" size="sm" loading={addingComment}>
+                    Post
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-xs text-slate-600">
+                  You have view-only access to this project.
+                </p>
+              )}
             </div>
           </div>
         </Modal>

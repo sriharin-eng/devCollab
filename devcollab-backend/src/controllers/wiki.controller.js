@@ -21,7 +21,7 @@ export const createWikiPage = async (req, res) => {
       ],
     });
 
-    const project = await Project.findById(projectId);
+    const project = req.project || (await Project.findById(projectId));
 
     await logActivity({
       workspace: project.workspace,
@@ -70,7 +70,7 @@ export const updateWikiPage = async (req, res) => {
 
     const { content } = req.body;
 
-    const wiki = await Wiki.findById(wikiId);
+    const wiki = req.wiki || (await Wiki.findById(wikiId));
 
     if (!wiki) {
       return res.status(404).json({

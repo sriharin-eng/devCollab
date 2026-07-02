@@ -23,7 +23,7 @@ function LoginPage() {
         setToken(data.token);
         setUser(data.user);
         toast("Signed in with Google!", "success");
-        navigate("/");
+        navigate("/app");
       } catch (err) {
         toast(err.response?.data?.message || "Google sign-in failed", "error");
       }
@@ -70,7 +70,7 @@ function LoginPage() {
       setToken(data.token);
       setUser(data.user);
       toast("Welcome back!", "success");
-      navigate("/");
+      navigate("/app");
     } catch (err) {
       const errData = err.response?.data;
       if (errData?.requiresVerification) {

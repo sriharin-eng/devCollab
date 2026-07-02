@@ -1,6 +1,10 @@
 import express from "express";
 
 import protect from "../middleware/auth.middleware.js";
+import {
+  requireProjectRole,
+  requireProjectRoleViaWiki,
+} from "../middleware/rbac.middleware.js";
 
 import {
   createWikiPage,
@@ -10,10 +14,20 @@ import {
 
 const router = express.Router();
 
-router.post("/", protect, createWikiPage);
+router.post("/", protect, requireProjectRole("Member"), createWikiPage);
 
-router.get("/:projectId", protect, getProjectWikiPages);
+router.get(
+  "/:projectId",
+  protect,
+  requireProjectRole("Viewer"),
+  getProjectWikiPages,
+);
 
-router.patch("/:wikiId", protect, updateWikiPage);
+router.patch(
+  "/:wikiId",
+  protect,
+  requireProjectRoleViaWiki("Member"),
+  updateWikiPage,
+);
 
 export default router;
