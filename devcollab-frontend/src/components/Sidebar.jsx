@@ -2,9 +2,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const NAV = [
-  { label: "Workspaces", icon: "⬡", path: "/" },
-  { label: "AI Assistant", icon: "✦", path: "/ai" },
-  { label: "Code Review", icon: "◈", path: "/code-review" },
+  { label: "Workspaces", icon: "⬡", path: "/app" },
+  { label: "AI Assistant", icon: "✦", path: "/app/ai" },
+  { label: "Code Review", icon: "◈", path: "/app/code-review" },
 ];
 
 function Sidebar() {
