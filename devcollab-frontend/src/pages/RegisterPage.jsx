@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { registerUser } from "../services/auth.service";
+import { registerUser, googleAuth } from "../services/auth.service";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -10,6 +12,52 @@ function RegisterPage() {
   const toast = useToast();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const googleInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || googleInitialized.current) return;
+
+    const handleGoogleCallback = async (response) => {
+      try {
+        const data = await googleAuth(response.credential);
+        setToken(data.token);
+        setUser(data.user);
+        toast("Signed up with Google!", "success");
+        navigate("/app");
+      } catch (err) {
+        toast(err.response?.data?.message || "Google sign-in failed", "error");
+      }
+    };
+
+    const initGoogle = () => {
+      if (googleInitialized.current) return;
+      googleInitialized.current = true;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCallback,
+      });
+      window.google.accounts.id.renderButton(
+        document.getElementById("google-btn-register"),
+        {
+          theme: "filled_black",
+          size: "large",
+          text: "signup_with",
+          shape: "rectangular",
+          width: 320,
+        },
+      );
+    };
+
+    if (window.google) {
+      initGoogle();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.onload = initGoogle;
+      document.body.appendChild(script);
+    }
+  }, []);
 
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -54,55 +102,65 @@ function RegisterPage() {
           </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-[#0d1117] border border-[#1e2535] rounded-2xl p-6 flex flex-col gap-4"
-        >
-          {[
-            {
-              name: "name",
-              label: "Full Name",
-              type: "text",
-              placeholder: "John Doe",
-            },
-            {
-              name: "email",
-              label: "Email",
-              type: "email",
-              placeholder: "you@company.com",
-            },
-            {
-              name: "password",
-              label: "Password",
-              type: "password",
-              placeholder: "••••••••",
-            },
-          ].map((field) => (
-            <div key={field.name} className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                {field.label}
-              </label>
-              <input
-                type={field.type}
-                name={field.name}
-                placeholder={field.placeholder}
-                value={form[field.name]}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
-              />
-            </div>
-          ))}
+        <div className="bg-[#0d1117] border border-[#1e2535] rounded-2xl p-6 flex flex-col gap-4">
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <div id="google-btn-register" className="flex justify-center" />
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-[#1e2535]" />
+                <span className="text-xs text-slate-600 font-medium">or</span>
+                <div className="flex-1 h-px bg-[#1e2535]" />
+              </div>
+            </>
+          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-xl text-sm transition-all flex items-center justify-center gap-2 mt-1"
-          >
-            {loading && <span className="spinner" />}
-            {loading ? "Creating account…" : "Create account"}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {[
+              {
+                name: "name",
+                label: "Full Name",
+                type: "text",
+                placeholder: "John Doe",
+              },
+              {
+                name: "email",
+                label: "Email",
+                type: "email",
+                placeholder: "you@company.com",
+              },
+              {
+                name: "password",
+                label: "Password",
+                type: "password",
+                placeholder: "••••••••",
+              },
+            ].map((field) => (
+              <div key={field.name} className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  {field.label}
+                </label>
+                <input
+                  type={field.type}
+                  name={field.name}
+                  placeholder={field.placeholder}
+                  value={form[field.name]}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
+                />
+              </div>
+            ))}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-xl text-sm transition-all flex items-center justify-center gap-2 mt-1"
+            >
+              {loading && <span className="spinner" />}
+              {loading ? "Creating account…" : "Create account"}
+            </button>
+          </form>
+        </div>
 
         <p className="text-center text-sm text-slate-500 mt-5">
           Already have an account?{" "}

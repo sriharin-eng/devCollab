@@ -15,7 +15,7 @@ export const createTask = async (req, res) => {
       assignee,
     } = req.body;
 
-    const project = await Project.findById(projectId);
+    const project = req.project || (await Project.findById(projectId));
 
     if (!project) {
       return res.status(404).json({
@@ -35,7 +35,7 @@ export const createTask = async (req, res) => {
     });
 
     io.to(projectId).emit("taskCreated", task);
-    
+
     await logActivity({
       workspace: project.workspace,
       project: project._id,
@@ -86,15 +86,15 @@ export const updateTaskStatus = async (req, res) => {
 
     const { status } = req.body;
 
-    const task = await Task.findById(taskId);
-
-    const project = await Project.findById(task.project);
+    const task = req.task || (await Task.findById(taskId));
 
     if (!task) {
       return res.status(404).json({
         message: "Task not found",
       });
     }
+
+    const project = req.project || (await Project.findById(task.project));
 
     task.status = status;
 
@@ -131,9 +131,7 @@ export const addComment = async (req, res) => {
 
     const { text } = req.body;
 
-    const task = await Task.findById(taskId);
-
-    const project = await Project.findById(task.project);
+    const task = req.task || (await Task.findById(taskId));
 
     if (!task) {
       return res.status(404).json({
@@ -141,12 +139,15 @@ export const addComment = async (req, res) => {
       });
     }
 
+    const project = req.project || (await Project.findById(task.project));
+
     task.comments.push({
       user: req.user._id,
       text,
     });
 
     await task.save();
+    await task.populate("comments.user", "name email");
 
     io.to(task.project.toString()).emit("commentAdded", task);
 
@@ -174,7 +175,7 @@ export const deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
 
-    const task = await Task.findById(taskId);
+    const task = req.task || (await Task.findById(taskId));
 
     if (!task) {
       return res.status(404).json({
@@ -182,7 +183,12 @@ export const deleteTask = async (req, res) => {
       });
     }
 
-    if (task.createdBy.toString() !== req.user._id.toString()) {
+    // Project Admins (incl. workspace Owner/Admin) can delete any task;
+    // otherwise only the task's own creator can delete it.
+    const isCreator = task.createdBy.toString() === req.user._id.toString();
+    const isProjectAdmin = req.projectRole === "Admin";
+
+    if (!isCreator && !isProjectAdmin) {
       return res.status(403).json({
         message: "Not authorized to delete this task",
       });

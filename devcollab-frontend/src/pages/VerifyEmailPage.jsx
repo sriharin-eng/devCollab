@@ -61,7 +61,7 @@ function VerifyEmailPage() {
       setToken(data.token);
       setUser(data.user);
       toast("Email verified! Welcome to DevCollab 🎉", "success");
-      navigate("/");
+      navigate("/app");
     } catch (err) {
       toast(err.response?.data?.message || "Verification failed", "error");
     }

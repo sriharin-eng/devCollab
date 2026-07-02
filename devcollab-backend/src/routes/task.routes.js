@@ -1,6 +1,10 @@
 import express from "express";
 
 import protect from "../middleware/auth.middleware.js";
+import {
+  requireProjectRole,
+  requireProjectRoleViaTask,
+} from "../middleware/rbac.middleware.js";
 
 import {
   createTask,
@@ -12,14 +16,35 @@ import {
 
 const router = express.Router();
 
-router.post("/", protect, createTask);
+// Viewers can look, but only Member+ can create/write.
+router.post("/", protect, requireProjectRole("Member"), createTask);
 
-router.get("/:projectId", protect, getProjectTasks);
+router.get(
+  "/:projectId",
+  protect,
+  requireProjectRole("Viewer"),
+  getProjectTasks,
+);
 
-router.patch("/:taskId/status", protect, updateTaskStatus);
+router.patch(
+  "/:taskId/status",
+  protect,
+  requireProjectRoleViaTask("Member"),
+  updateTaskStatus,
+);
 
-router.post("/:taskId/comments", protect, addComment);
+router.post(
+  "/:taskId/comments",
+  protect,
+  requireProjectRoleViaTask("Member"),
+  addComment,
+);
 
-router.delete("/:taskId", protect, deleteTask);
+router.delete(
+  "/:taskId",
+  protect,
+  requireProjectRoleViaTask("Viewer"), // fine-grained check happens in controller (creator OR Admin)
+  deleteTask,
+);
 
 export default router;

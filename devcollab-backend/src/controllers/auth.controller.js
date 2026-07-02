@@ -285,5 +285,8 @@ export const testEmail = async (req, res) => {
 
 // ── Get Me ────────────────────────────────────────────────────────────────────
 export const getMe = async (req, res) => {
-  res.status(200).json({ user: req.user });
+  const u = req.user;
+  res.status(200).json({
+    user: { id: u._id, name: u.name, email: u.email, avatar: u.avatar },
+  });
 };
