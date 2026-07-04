@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
   getTasks,
   createTask,
   updateTaskStatus,
@@ -8,9 +17,11 @@ import {
   deleteTask,
 } from "../services/task.service";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/ConfirmContext";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import Button from "../components/Button";
+import Select from "../components/Select";
 import { StatusBadge, PriorityBadge } from "../components/Badge";
 import { canWrite, canManage } from "../utils/roles";
 
@@ -57,10 +68,88 @@ const STATUS_STYLES = {
   Done: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
 };
 
+// ── Card content, shared between the board and the drag overlay ────
+function TaskCardContent({ task }) {
+  return (
+    <>
+      <p className="text-sm font-medium text-white mb-2 leading-snug">
+        {task.title}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.P1}`}
+        >
+          {task.priority || "P1"}
+        </span>
+        {task.dueDate && (
+          <span className="text-xs text-slate-500 font-mono">
+            {new Date(task.dueDate).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+      {task.labels?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {task.labels.map((l, i) => (
+            <span
+              key={i}
+              className="text-xs bg-[#1a2035] text-slate-400 px-2 py-0.5 rounded-md border border-[#2a3550]"
+            >
+              {l}
+            </span>
+          ))}
+        </div>
+      )}
+      {task.comments?.length > 0 && (
+        <p className="text-xs text-slate-600 mt-2">💬 {task.comments.length}</p>
+      )}
+    </>
+  );
+}
+
+// ── Draggable card ───────────────────────────────────────────────
+function DraggableTaskCard({ task, onOpen, disabled }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task._id,
+    data: { task },
+    disabled,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={() => onOpen(task)}
+      className={`bg-[#0d1117] border border-[#1e2535] hover:border-indigo-500/30 rounded-xl p-3.5 transition-all hover:shadow-md animate-fadein ${
+        disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
+      } ${isDragging ? "opacity-30" : ""}`}
+    >
+      <TaskCardContent task={task} />
+    </div>
+  );
+}
+
+// ── Droppable column ─────────────────────────────────────────────
+function DroppableColumn({ col, children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col gap-2 min-h-[120px] rounded-2xl p-1.5 -m-1.5 transition-colors ${
+        isOver ? "bg-indigo-500/[0.06] ring-1 ring-indigo-500/40" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
 function TaskPage({ role = "Viewer" }) {
   const { workspaceId, projectId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const { user } = useAuth();
 
   const canCreate = canWrite(role);
@@ -73,6 +162,13 @@ function TaskPage({ role = "Viewer" }) {
   const [submitting, setSubmitting] = useState(false);
   const [comment, setComment] = useState("");
   const [addingComment, setAddingComment] = useState(false);
+  const [activeTask, setActiveTask] = useState(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 }, // lets clicks-to-open still work
+    }),
+  );
 
   const [form, setForm] = useState({
     title: "",
@@ -153,8 +249,43 @@ function TaskPage({ role = "Viewer" }) {
     }
   };
 
+  const handleDragStart = (event) => {
+    const task = tasks.find((t) => t._id === event.active.id);
+    setActiveTask(task || null);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    setActiveTask(null);
+    if (!over) return;
+
+    const taskId = active.id;
+    const newStatus = over.id;
+    const task = tasks.find((t) => t._id === taskId);
+    if (!task || task.status === newStatus) return;
+
+    // Optimistic update — the board reflects the move instantly, then
+    // we persist it, rolling back if the request fails.
+    const prevTasks = tasks;
+    setTasks((prev) =>
+      prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t)),
+    );
+
+    updateTaskStatus(taskId, newStatus).catch((err) => {
+      setTasks(prevTasks);
+      toast(err.response?.data?.message || "Failed to move task", "error");
+    });
+  };
+
   const handleDelete = async (taskId) => {
-    if (!confirm("Delete this task?")) return;
+    const ok = await confirmDialog(
+      "This will permanently delete the task and its comments.",
+      {
+        title: "Delete this task?",
+        confirmLabel: "Delete",
+      },
+    );
+    if (!ok) return;
     try {
       await deleteTask(taskId);
       toast("Task deleted", "success");
@@ -221,77 +352,59 @@ function TaskPage({ role = "Viewer" }) {
       </div>
 
       {/* Kanban board */}
-      <div className="grid grid-cols-4 gap-4">
-        {COLUMNS.map((col) => {
-          const colTasks = byStatus(col.id);
-          return (
-            <div key={col.id} className="flex flex-col gap-3">
-              {/* Column header */}
-              <div className="flex items-center gap-2 px-1">
-                <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                <span
-                  className={`text-xs font-semibold uppercase tracking-wider ${col.color}`}
-                >
-                  {col.label}
-                </span>
-                <span className="ml-auto text-xs text-slate-600 bg-[#1a2035] px-2 py-0.5 rounded-full">
-                  {colTasks.length}
-                </span>
-              </div>
-
-              {/* Cards */}
-              <div className="flex flex-col gap-2 min-h-[120px]">
-                {colTasks.map((task) => (
-                  <div
-                    key={task._id}
-                    onClick={() => setDetailTask(task)}
-                    className="bg-[#0d1117] border border-[#1e2535] hover:border-indigo-500/30 rounded-xl p-3.5 cursor-pointer transition-all hover:shadow-md animate-fadein"
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-4 gap-4">
+          {COLUMNS.map((col) => {
+            const colTasks = byStatus(col.id);
+            return (
+              <div key={col.id} className="flex flex-col gap-3">
+                {/* Column header */}
+                <div className="flex items-center gap-2 px-1">
+                  <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+                  <span
+                    className={`text-xs font-semibold uppercase tracking-wider ${col.color}`}
                   >
-                    <p className="text-sm font-medium text-white mb-2 leading-snug">
-                      {task.title}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.P1}`}
-                      >
-                        {task.priority || "P1"}
-                      </span>
-                      {task.dueDate && (
-                        <span className="text-xs text-slate-500 font-mono">
-                          {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                    {task.labels?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {task.labels.map((l, i) => (
-                          <span
-                            key={i}
-                            className="text-xs bg-[#1a2035] text-slate-400 px-2 py-0.5 rounded-md border border-[#2a3550]"
-                          >
-                            {l}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {task.comments?.length > 0 && (
-                      <p className="text-xs text-slate-600 mt-2">
-                        💬 {task.comments.length}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                    {col.label}
+                  </span>
+                  <span className="ml-auto text-xs text-slate-600 bg-[#1a2035] px-2 py-0.5 rounded-full">
+                    {colTasks.length}
+                  </span>
+                </div>
 
-                {colTasks.length === 0 && (
-                  <div className="border border-dashed border-[#1e2535] rounded-xl h-16 flex items-center justify-center">
-                    <span className="text-xs text-slate-700">Empty</span>
-                  </div>
-                )}
+                {/* Cards */}
+                <DroppableColumn col={col}>
+                  {colTasks.map((task) => (
+                    <DraggableTaskCard
+                      key={task._id}
+                      task={task}
+                      onOpen={setDetailTask}
+                      disabled={!canCreate}
+                    />
+                  ))}
+
+                  {colTasks.length === 0 && (
+                    <div className="border border-dashed border-[#1e2535] rounded-xl h-16 flex items-center justify-center">
+                      <span className="text-xs text-slate-700">Empty</span>
+                    </div>
+                  )}
+                </DroppableColumn>
               </div>
+            );
+          })}
+        </div>
+
+        <DragOverlay dropAnimation={{ duration: 180, easing: "ease-out" }}>
+          {activeTask && (
+            <div className="bg-[#0d1117] border border-indigo-500/50 rounded-xl p-3.5 shadow-2xl shadow-black/50 rotate-2 w-[268px] cursor-grabbing">
+              <TaskCardContent task={activeTask} />
             </div>
-          );
-        })}
-      </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* ── Create Task Modal ─────────────────────────── */}
       {createModal && (
@@ -333,19 +446,11 @@ function TaskPage({ role = "Viewer" }) {
                 <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                   Priority
                 </label>
-                <select
+                <Select
                   value={form.priority}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, priority: e.target.value }))
-                  }
-                  className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
-                >
-                  {PRIORITIES.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, priority: v }))}
+                  options={PRIORITIES}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -465,20 +570,12 @@ function TaskPage({ role = "Viewer" }) {
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Change Status
               </label>
-              <select
+              <Select
                 value={detailTask.status || "To Do"}
-                onChange={(e) =>
-                  handleStatusChange(detailTask._id, e.target.value)
-                }
+                onChange={(v) => handleStatusChange(detailTask._id, v)}
                 disabled={!canCreate}
-                className="w-full px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {COLUMNS.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+                options={COLUMNS.map((c) => ({ value: c.id, label: c.label }))}
+              />
             </div>
 
             {/* Delete */}

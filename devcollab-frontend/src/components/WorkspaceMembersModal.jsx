@@ -1,8 +1,10 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
+import Select from "./Select";
 import RoleBadge from "./RoleBadge";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/ConfirmContext";
 import {
   inviteWorkspaceMember,
   updateWorkspaceMemberRole,
@@ -20,6 +22,7 @@ function WorkspaceMembersModal({
   onChanged,
 }) {
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Member");
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +55,11 @@ function WorkspaceMembersModal({
   };
 
   const handleRemove = async (memberId) => {
-    if (!confirm("Remove this member from the workspace?")) return;
+    const ok = await confirmDialog(
+      "This member will lose access immediately.",
+      { title: "Remove this member?", confirmLabel: "Remove" },
+    );
+    if (!ok) return;
     try {
       await removeWorkspaceMember(workspace._id, memberId);
       toast("Member removed", "success");
@@ -66,7 +73,7 @@ function WorkspaceMembersModal({
     <Modal title={`Members · ${workspace.name}`} onClose={onClose} size="lg">
       <div className="flex flex-col gap-5">
         {canManageMembers && (
-          <form onSubmit={handleInvite} className="flex gap-2">
+          <form onSubmit={handleInvite} className="flex gap-2 items-end">
             <input
               type="email"
               placeholder="colleague@company.com"
@@ -75,17 +82,12 @@ function WorkspaceMembersModal({
               required
               className="flex-1 px-3 py-2 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition-all"
             />
-            <select
+            <Select
+              className="w-36"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="px-3 py-2 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
-            >
-              {INVITE_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+              onChange={setRole}
+              options={INVITE_ROLES.map((r) => ({ value: r, label: r }))}
+            />
             <Button type="submit" size="sm" loading={submitting}>
               Add
             </Button>
@@ -114,19 +116,18 @@ function WorkspaceMembersModal({
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {canManageMembers && !memberIsOwner ? (
-                    <select
+                    <Select
+                      size="sm"
+                      className="w-28"
                       value={m.role}
-                      onChange={(e) =>
-                        handleRoleChange(memberId, e.target.value)
+                      onChange={(newRole) =>
+                        handleRoleChange(memberId, newRole)
                       }
-                      className="px-2 py-1 bg-[#1a2035] border border-[#2a3550] rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500/60 appearance-none"
-                    >
-                      {INVITE_ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
+                      options={INVITE_ROLES.map((r) => ({
+                        value: r,
+                        label: r,
+                      }))}
+                    />
                   ) : (
                     <RoleBadge role={m.role} />
                   )}

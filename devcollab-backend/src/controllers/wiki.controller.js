@@ -21,6 +21,9 @@ export const createWikiPage = async (req, res) => {
       ],
     });
 
+    await wiki.populate("createdBy", "name email");
+    await wiki.populate("versions.updatedBy", "name email");
+
     const project = req.project || (await Project.findById(projectId));
 
     await logActivity({
@@ -52,7 +55,9 @@ export const getProjectWikiPages = async (req, res) => {
 
     const pages = await Wiki.find({
       project: projectId,
-    }).populate("createdBy", "name email");
+    })
+      .populate("createdBy", "name email")
+      .populate("versions.updatedBy", "name email");
 
     res.status(200).json({
       pages,
@@ -86,10 +91,48 @@ export const updateWikiPage = async (req, res) => {
     });
 
     await wiki.save();
+    await wiki.populate("createdBy", "name email");
+    await wiki.populate("versions.updatedBy", "name email");
 
     res.status(200).json({
       message: "Wiki updated",
       wiki,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const deleteWikiPage = async (req, res) => {
+  try {
+    const { wikiId } = req.params;
+
+    const wiki = req.wiki || (await Wiki.findById(wikiId));
+
+    if (!wiki) {
+      return res.status(404).json({
+        message: "Wiki page not found",
+      });
+    }
+
+    await Wiki.findByIdAndDelete(wikiId);
+
+    await logActivity({
+      workspace: req.workspace?._id,
+      project: wiki.project,
+      user: req.user._id,
+      action: "deleted wiki page",
+      entityType: "Project",
+      entityId: wiki._id,
+      metadata: {
+        title: wiki.title,
+      },
+    });
+
+    res.status(200).json({
+      message: "Wiki page deleted",
     });
   } catch (error) {
     res.status(500).json({

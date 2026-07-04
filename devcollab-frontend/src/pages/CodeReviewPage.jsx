@@ -2,20 +2,31 @@ import { useState } from "react";
 import { reviewCode } from "../services/codeReview.service";
 import { useToast } from "../context/ToastContext";
 import Button from "../components/Button";
+import Select from "../components/Select";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const LANGUAGES = [
-  "javascript", "typescript", "python", "java", "go",
-  "rust", "cpp", "php", "ruby", "swift", "kotlin", "csharp",
+  "javascript",
+  "typescript",
+  "python",
+  "java",
+  "go",
+  "rust",
+  "cpp",
+  "php",
+  "ruby",
+  "swift",
+  "kotlin",
+  "csharp",
 ];
 
 function CodeReviewPage() {
   const toast = useToast();
   const [language, setLanguage] = useState("javascript");
-  const [code, setCode]         = useState("");
-  const [result, setResult]     = useState(null);
-  const [loading, setLoading]   = useState(false);
+  const [code, setCode] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleReview = async (e) => {
     e.preventDefault();
@@ -24,7 +35,12 @@ function CodeReviewPage() {
     setResult(null);
     try {
       const data = await reviewCode(language, code);
-      setResult(data.review || data.feedback || data.result || JSON.stringify(data, null, 2));
+      setResult(
+        data.review ||
+          data.feedback ||
+          data.result ||
+          JSON.stringify(data, null, 2),
+      );
     } catch (err) {
       toast(err.response?.data?.message || "Code review failed", "error");
     }
@@ -38,32 +54,44 @@ function CodeReviewPage() {
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium mb-4">
           ◈ AI Code Review
         </div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Code Review</h1>
-        <p className="text-slate-400 text-sm mt-1">Get instant AI feedback on your code</p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">
+          Code Review
+        </h1>
+        <p className="text-slate-400 text-sm mt-1">
+          Get instant AI feedback on your code
+        </p>
       </div>
 
       <form onSubmit={handleReview} className="flex flex-col gap-5">
         {/* Language selector */}
         <div className="flex items-center gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Language</label>
-            <select
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+              Language
+            </label>
+            <Select
+              className="w-44"
               value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="px-3 py-2.5 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none cursor-pointer w-44"
-            >
-              {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
+              onChange={setLanguage}
+              options={LANGUAGES.map((l) => ({ value: l, label: l }))}
+            />
           </div>
           <div className="flex-1" />
-          <Button type="submit" loading={loading} disabled={loading || !code.trim()} className="self-end">
+          <Button
+            type="submit"
+            loading={loading}
+            disabled={loading || !code.trim()}
+            className="self-end"
+          >
             ◈ Review Code
           </Button>
         </div>
 
         {/* Code textarea */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Code</label>
+          <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            Code
+          </label>
           <div className="relative">
             <div className="absolute top-3 left-4 text-xs text-slate-600 font-mono pointer-events-none">
               {language}
@@ -95,7 +123,6 @@ function CodeReviewPage() {
       {/* Result */}
       {result && (
         <div className="mt-6 bg-gradient-to-br from-[#0d1117] to-[#111827] border border-[#1e2535] rounded-2xl overflow-hidden animate-fadein shadow-2xl shadow-black/20">
-          
           {/* Header */}
           <div className="px-5 py-3 border-b border-[#1e2535] flex items-center justify-between bg-white/[0.02]">
             <div className="flex items-center gap-2">
@@ -141,9 +168,7 @@ function CodeReviewPage() {
                   ),
 
                   p: ({ children }) => (
-                    <p className="text-slate-300 leading-7 mb-4">
-                      {children}
-                    </p>
+                    <p className="text-slate-300 leading-7 mb-4">{children}</p>
                   ),
 
                   li: ({ children }) => (

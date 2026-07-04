@@ -1,8 +1,10 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
+import Select from "./Select";
 import RoleBadge from "./RoleBadge";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/ConfirmContext";
 import {
   addProjectMember,
   updateProjectMemberRole,
@@ -21,6 +23,7 @@ function ProjectMembersModal({
   onChanged,
 }) {
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState("Member");
   const [submitting, setSubmitting] = useState(false);
@@ -62,7 +65,11 @@ function ProjectMembersModal({
   };
 
   const handleRemove = async (memberId) => {
-    if (!confirm("Remove this member from the project?")) return;
+    const ok = await confirmDialog(
+      "This member will lose access immediately.",
+      { title: "Remove this member?", confirmLabel: "Remove" },
+    );
+    if (!ok) return;
     try {
       await removeProjectMember(project._id, memberId);
       toast("Member removed", "success");
@@ -76,35 +83,33 @@ function ProjectMembersModal({
     <Modal title={`Members · ${project.name}`} onClose={onClose} size="lg">
       <div className="flex flex-col gap-5">
         {canManageMembers && (
-          <form onSubmit={handleAdd} className="flex gap-2">
-            <select
+          <form onSubmit={handleAdd} className="flex gap-2 items-end">
+            <Select
+              className="flex-1"
               value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              required
-              className="flex-1 px-3 py-2 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
-            >
-              <option value="">Select a workspace member…</option>
-              {candidates.map((m) => {
+              onChange={setUserId}
+              placeholder="Select a workspace member…"
+              options={candidates.map((m) => {
                 const id = m.user?._id || m.user;
-                return (
-                  <option key={id} value={id}>
-                    {m.user?.name} ({m.user?.email})
-                  </option>
-                );
+                return {
+                  value: id,
+                  label: m.user?.name,
+                  hint: `(${m.user?.email})`,
+                };
               })}
-            </select>
-            <select
+            />
+            <Select
+              className="w-36"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="px-3 py-2 bg-[#1a2035] border border-[#2a3550] rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
+              onChange={setRole}
+              options={PROJECT_ROLES.map((r) => ({ value: r, label: r }))}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              loading={submitting}
+              disabled={!userId}
             >
-              {PROJECT_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            <Button type="submit" size="sm" loading={submitting}>
               Add
             </Button>
           </form>
@@ -138,19 +143,18 @@ function ProjectMembersModal({
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {canManageMembers ? (
-                    <select
+                    <Select
+                      size="sm"
+                      className="w-28"
                       value={m.role}
-                      onChange={(e) =>
-                        handleRoleChange(memberId, e.target.value)
+                      onChange={(newRole) =>
+                        handleRoleChange(memberId, newRole)
                       }
-                      className="px-2 py-1 bg-[#1a2035] border border-[#2a3550] rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500/60 appearance-none"
-                    >
-                      {PROJECT_ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
+                      options={PROJECT_ROLES.map((r) => ({
+                        value: r,
+                        label: r,
+                      }))}
+                    />
                   ) : (
                     <RoleBadge role={m.role} />
                   )}
