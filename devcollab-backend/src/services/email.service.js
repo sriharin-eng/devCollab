@@ -12,6 +12,14 @@ export const sendOtpEmail = async (to, otp, purpose) => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Without these, a blocked/slow outbound SMTP path (common on some
+    // hosts' free tiers) leaves the request hanging for nodemailer's
+    // default ~2 minute timeout — which held the whole /register (or
+    // /resend-otp, /forgot-password, /login) request open the entire
+    // time. Fail fast instead so the caller gets a clear error quickly.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
 
   const isReset = purpose === "reset_password";
@@ -64,10 +72,19 @@ export const sendOtpEmail = async (to, otp, purpose) => {
       </table>
     </body></html>`;
 
-  await transporter.sendMail({
+  const info = await transporter.sendMail({
     from: `"DevCollab" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
   });
+
+  // Not throwing just means Gmail's SMTP server *accepted* the message —
+  // it doesn't guarantee inbox delivery (spam filtering, throttling on a
+  // new sender, etc. happen after this). Logging the actual response
+  // makes it possible to confirm from the terminal whether it was really
+  // accepted, instead of just inferring it from the absence of an error.
+  /*console.log(
+    `[email] OTP email accepted by Gmail for ${to} — messageId: ${info.messageId}, accepted: ${info.accepted}, rejected: ${info.rejected}`,
+  );*/
 };
