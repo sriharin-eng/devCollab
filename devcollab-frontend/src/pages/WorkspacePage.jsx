@@ -6,6 +6,7 @@ import {
   deleteWorkspace,
 } from "../services/workspace.service";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/ConfirmContext";
 import { useAuth } from "../context/AuthContext";
 import Modal from "../components/Modal";
 import Button from "../components/Button";
@@ -17,6 +18,7 @@ import { isOwner } from "../utils/roles";
 function WorkspacePage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,11 @@ function WorkspacePage() {
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!confirm("Delete this workspace and all its data?")) return;
+    const ok = await confirmDialog(
+      "This will permanently delete the workspace, its projects, tasks, and wiki pages.",
+      { title: "Delete this workspace?", confirmLabel: "Delete" },
+    );
+    if (!ok) return;
     try {
       await deleteWorkspace(id);
       toast("Workspace deleted", "success");

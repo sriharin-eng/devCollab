@@ -15,7 +15,7 @@ export const updateWikiPage = async (wikiId, content) => {
   return res.data;
 };
 
-/*export const deleteWikiPage = async (wikiId) => {
+export const deleteWikiPage = async (wikiId) => {
   const res = await api.delete(`/wiki/${wikiId}`);
   return res.data;
-};*/
+};

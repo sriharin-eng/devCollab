@@ -4,17 +4,21 @@ import {
   getWikiPages,
   createWikiPage,
   updateWikiPage,
+  deleteWikiPage,
 } from "../services/wiki.service";
 import { useToast } from "../context/ToastContext";
+import { useConfirm } from "../context/ConfirmContext";
 import Modal from "../components/Modal";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
-import { canWrite } from "../utils/roles";
+import { canWrite, canManage } from "../utils/roles";
 
 function WikiPage({ role = "Viewer" }) {
   const { projectId } = useParams();
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const canEdit = canWrite(role);
+  const canDelete = canManage(role);
 
   const [pages, setPages] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -22,6 +26,9 @@ function WikiPage({ role = "Viewer" }) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [restoringIdx, setRestoringIdx] = useState(null);
   const [modal, setModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ title: "", content: "" });
@@ -76,6 +83,47 @@ function WikiPage({ role = "Viewer" }) {
     setSaving(false);
   };
 
+  const handleDelete = async () => {
+    const ok = await confirmDialog(
+      "This will permanently delete the page and its version history.",
+      { title: `Delete "${selected.title}"?`, confirmLabel: "Delete" },
+    );
+    if (!ok) return;
+
+    setDeleting(true);
+    try {
+      await deleteWikiPage(selected._id);
+      const remaining = pages.filter((pg) => pg._id !== selected._id);
+      setPages(remaining);
+      setSelected(remaining[0] || null);
+      setShowHistory(false);
+      toast("Page deleted", "success");
+    } catch (err) {
+      toast(err.response?.data?.message || "Failed to delete page", "error");
+    }
+    setDeleting(false);
+  };
+
+  const handleRestore = async (version, idx) => {
+    const ok = await confirmDialog(
+      "This will save the selected version as the current content, adding a new entry to the history.",
+      { title: "Restore this version?", confirmLabel: "Restore" },
+    );
+    if (!ok) return;
+
+    setRestoringIdx(idx);
+    try {
+      const data = await updateWikiPage(selected._id, version.content);
+      const updated = data.wiki;
+      setPages((p) => p.map((pg) => (pg._id === updated._id ? updated : pg)));
+      setSelected(updated);
+      toast("Version restored", "success");
+    } catch {
+      toast("Failed to restore version", "error");
+    }
+    setRestoringIdx(null);
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -107,6 +155,7 @@ function WikiPage({ role = "Viewer" }) {
                     onClick={() => {
                       setSelected(p);
                       setEditing(false);
+                      setShowHistory(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-all ${
                       selected?._id === p._id
@@ -149,22 +198,94 @@ function WikiPage({ role = "Viewer" }) {
                           Save
                         </Button>
                       </>
-                    ) : canEdit ? (
-                      <Button
-                        variant="subtle"
-                        size="sm"
-                        onClick={() => {
-                          setEditing(true);
-                          setEditContent(selected.content || "");
-                        }}
-                      >
-                        Edit
-                      </Button>
-                    ) : null}
+                    ) : (
+                      <>
+                        {selected.versions?.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowHistory((s) => !s)}
+                          >
+                            {showHistory ? "Hide history" : "History"}
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button
+                            variant="subtle"
+                            size="sm"
+                            onClick={() => {
+                              setEditing(true);
+                              setEditContent(selected.content || "");
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            loading={deleting}
+                            onClick={handleDelete}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
-                {editing ? (
+                {showHistory ? (
+                  <div className="flex flex-col gap-2">
+                    {[...selected.versions].reverse().map((v, revIdx) => {
+                      const idx = selected.versions.length - 1 - revIdx;
+                      const isCurrent = revIdx === 0;
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-[#111827] border border-[#1e2535] rounded-xl p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 text-[10px] font-bold flex-shrink-0">
+                                {(v.updatedBy?.name || "U")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm text-white truncate">
+                                  {v.updatedBy?.name || "Unknown"}
+                                  {isCurrent && (
+                                    <span className="ml-2 text-[11px] text-emerald-400 font-medium">
+                                      Current
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {new Date(v.updatedAt).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            {canEdit && !isCurrent && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                loading={restoringIdx === idx}
+                                onClick={() => handleRestore(v, idx)}
+                              >
+                                Restore
+                              </Button>
+                            )}
+                          </div>
+                          <pre className="mt-3 text-slate-400 text-xs leading-6 whitespace-pre-wrap font-mono max-h-32 overflow-y-auto border-t border-[#1e2535] pt-3">
+                            {v.content || "(empty)"}
+                          </pre>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : editing ? (
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
@@ -187,7 +308,7 @@ function WikiPage({ role = "Viewer" }) {
                 )}
 
                 {/* Version count */}
-                {selected.versions?.length > 0 && (
+                {!showHistory && selected.versions?.length > 0 && (
                   <div className="mt-6 pt-4 border-t border-[#1e2535]">
                     <p className="text-xs text-slate-600">
                       {selected.versions.length} version

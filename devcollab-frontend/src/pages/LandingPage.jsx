@@ -54,7 +54,9 @@ function VideoModal({ videoSrc, onClose }) {
             <span className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
             <span className="w-3 h-3 rounded-full bg-[#28c840]" />
           </div>
-          <span className="text-xs text-slate-500 font-mono">DevCollab — Demo</span>
+          <span className="text-xs text-slate-500 font-mono">
+            DevCollab — Demo
+          </span>
           <button
             onClick={onClose}
             className="text-slate-500 hover:text-white transition-colors text-sm"
@@ -98,15 +100,23 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#080b14] text-slate-200 overflow-x-hidden">
-
       {/* ── Navbar ── */}
       <nav className="sticky top-0 z-40 bg-[#080b14]/80 backdrop-blur border-b border-[#1e2535]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center">
-              <img src="/logo.png" alt="DevCollab" className="w-5 h-5 object-contain" onError={(e) => { e.target.style.display = "none"; }} />
+              <img
+                src="/logo.png"
+                alt="DevCollab"
+                className="w-5 h-5 object-contain"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
             </div>
-            <span className="font-semibold text-white text-[15px] tracking-tight">DevCollab</span>
+            <span className="font-semibold text-white text-[15px] tracking-tight">
+              DevCollab
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -141,19 +151,23 @@ function LandingPage() {
         <div
           aria-hidden="true"
           className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] -z-10 blur-[120px] opacity-30"
-          style={{ background: "radial-gradient(ellipse at center, #6366f1 0%, transparent 70%)" }}
+          style={{
+            background:
+              "radial-gradient(ellipse at center, #6366f1 0%, transparent 70%)",
+          }}
         />
 
         <div className="animate-fadein">
           <Pill>✦ Built for dev teams</Pill>
           <h1 className="mt-6 text-5xl sm:text-6xl font-bold text-white tracking-tight leading-[1.1]">
-            Ship faster,<br />
+            Ship faster,
+            <br />
             <span className="text-indigo-400">together.</span>
           </h1>
           <p className="mt-5 text-slate-400 text-lg max-w-xl mx-auto leading-7">
-            DevCollab brings workspaces, tasks, wikis, and AI-powered code review
-            into one place — so your team spends less time coordinating and more
-            time building.
+            DevCollab brings workspaces, tasks, wikis, and AI-powered code
+            review into one place — so your team spends less time coordinating
+            and more time building.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -195,7 +209,8 @@ function LandingPage() {
             Everything your team needs
           </h2>
           <p className="mt-3 text-slate-400 text-sm max-w-md mx-auto">
-            From project management to AI code review — all without switching tabs.
+            From project management to AI code review — all without switching
+            tabs.
           </p>
         </div>
 
@@ -241,7 +256,9 @@ function LandingPage() {
           <div>
             <Pill>How it works</Pill>
             <h2 className="mt-4 text-3xl font-bold text-white tracking-tight leading-snug">
-              From zero to<br />collaborating in minutes
+              From zero to
+              <br />
+              collaborating in minutes
             </h2>
             <p className="mt-3 text-slate-400 text-sm leading-6">
               No complicated setup. Create a workspace, invite your team, and
@@ -276,7 +293,8 @@ function LandingPage() {
             See DevCollab in action
           </h2>
           <p className="mt-3 text-slate-400 text-sm">
-            A walkthrough of every feature — from workspace creation to AI code review.
+            A walkthrough of every feature — from workspace creation to AI code
+            review.
           </p>
         </div>
 
@@ -309,14 +327,20 @@ function LandingPage() {
                     "radial-gradient(circle at 60% 40%, #6366f1 0%, transparent 60%)",
                 }}
               />
-              <div className="w-16 h-16 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-2xl relative z-10 cursor-pointer hover:bg-indigo-600/30 transition-all"
+              <div
+                className="w-16 h-16 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-2xl relative z-10 cursor-pointer hover:bg-indigo-600/30 transition-all"
                 onClick={() => videoInputRef.current?.click()}
               >
                 ▶
               </div>
               <div className="relative z-10 text-center">
-                <p className="text-white font-semibold text-sm mb-1">Load your demo video</p>
-                <p className="text-slate-500 text-xs mb-4">Click the button below to pick the .mp4 file from your computer</p>
+                <p className="text-white font-semibold text-sm mb-1">
+                  Load your demo video
+                </p>
+                <p className="text-slate-500 text-xs mb-4">
+                  Click the button below to pick the .mp4 file from your
+                  computer
+                </p>
                 <button
                   onClick={() => videoInputRef.current?.click()}
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-all"
@@ -347,16 +371,22 @@ function LandingPage() {
           Built with
         </p>
         <div className="flex flex-wrap justify-center gap-3">
-          {["React", "Node.js", "Express", "MongoDB", "Gemini AI", "JWT Auth", "Tailwind CSS"].map(
-            (tech) => (
-              <span
-                key={tech}
-                className="px-4 py-2 bg-[#0d1117] border border-[#1e2535] rounded-xl text-slate-400 text-sm"
-              >
-                {tech}
-              </span>
-            )
-          )}
+          {[
+            "React",
+            "Node.js",
+            "Express",
+            "MongoDB",
+            "Gemini AI",
+            "JWT Auth",
+            "Tailwind CSS",
+          ].map((tech) => (
+            <span
+              key={tech}
+              className="px-4 py-2 bg-[#0d1117] border border-[#1e2535] rounded-xl text-slate-400 text-sm"
+            >
+              {tech}
+            </span>
+          ))}
         </div>
       </section>
 
@@ -365,7 +395,8 @@ function LandingPage() {
         <div
           className="relative rounded-3xl overflow-hidden border border-indigo-500/20 p-12 text-center"
           style={{
-            background: "linear-gradient(135deg, #0d1117 0%, #0f1629 50%, #0d1117 100%)",
+            background:
+              "linear-gradient(135deg, #0d1117 0%, #0f1629 50%, #0d1117 100%)",
           }}
         >
           <div
@@ -381,7 +412,8 @@ function LandingPage() {
               Ready to ship faster?
             </h2>
             <p className="text-slate-400 text-sm mb-8 max-w-sm mx-auto leading-6">
-              Join your team on DevCollab. Set up your first workspace in under two minutes.
+              Join your team on DevCollab. Set up your first workspace in under
+              two minutes.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
@@ -405,7 +437,14 @@ function LandingPage() {
       <footer className="border-t border-[#1e2535] max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <img src="/logo.png" alt="" className="w-4 h-4 object-contain" onError={(e) => { e.target.style.display = "none"; }} />
+            <img
+              src="/logo.png"
+              alt=""
+              className="w-4 h-4 object-contain"
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
           </div>
           <span className="text-sm font-semibold text-white">DevCollab</span>
         </div>

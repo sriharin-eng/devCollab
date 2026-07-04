@@ -10,6 +10,7 @@ import {
   createWikiPage,
   getProjectWikiPages,
   updateWikiPage,
+  deleteWikiPage,
 } from "../controllers/wiki.controller.js";
 
 const router = express.Router();
@@ -28,6 +29,13 @@ router.patch(
   protect,
   requireProjectRoleViaWiki("Member"),
   updateWikiPage,
+);
+
+router.delete(
+  "/:wikiId",
+  protect,
+  requireProjectRoleViaWiki("Admin"),
+  deleteWikiPage,
 );
 
 export default router;
